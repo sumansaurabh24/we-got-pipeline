@@ -1,4 +1,4 @@
-module data-pipeline
+module we-got-pipeline
 
 go 1.19
 

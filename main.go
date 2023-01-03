@@ -1,9 +1,9 @@
 package main
 
 import (
-	"data-pipeline/app"
 	"github.com/go-co-op/gocron"
 	"time"
+	"we-got-pipeline/app"
 )
 
 func main() {
@@ -23,7 +23,7 @@ func main() {
 	p.Invoke()
 
 	s := gocron.NewScheduler(time.UTC)
-	s.Every(10).Hours().Do(func() {
+	s.Every(app.ScheduleInterval).Hours().Do(func() {
 		p.PublishFiles()
 	})
 	s.StartBlocking()
