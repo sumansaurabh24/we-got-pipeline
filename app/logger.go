@@ -1,8 +1,10 @@
 package app
 
 import (
+	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"time"
 )
 
 func InitializeLogger() (*zap.SugaredLogger, error) {
@@ -13,7 +15,7 @@ func InitializeLogger() (*zap.SugaredLogger, error) {
 	cfg := &zap.Config{
 		Encoding:         "json",
 		ErrorOutputPaths: []string{"stderr"},
-		OutputPaths:      []string{"stdout", "./logs/app.log"},
+		OutputPaths:      []string{"stdout"},
 		Level:            level,
 		EncoderConfig: zapcore.EncoderConfig{
 			MessageKey:     "msg",
@@ -32,9 +34,27 @@ func InitializeLogger() (*zap.SugaredLogger, error) {
 		},
 	}
 
-	logger := zap.Must(cfg.Build()).Sugar()
-	defer logger.Sync()
+	// initialize the rotator
+	logFile := "logs/app-%Y-%m-%d-%H.log"
+	rotator, err := rotatelogs.New(
+		logFile,
+		rotatelogs.WithMaxAge(60*24*time.Hour),
+		rotatelogs.WithRotationTime(time.Hour),
+	)
 
+	if err != nil {
+		panic(err)
+	}
+
+	writer := zapcore.AddSync(rotator)
+
+	core := zapcore.NewCore(
+		zapcore.NewJSONEncoder(cfg.EncoderConfig),
+		writer,
+		level,
+	)
+
+	logger := zap.New(core).Sugar()
 	logger.Infow("Logger setup done.", "level", level.String())
 	return logger, nil
 }

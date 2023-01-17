@@ -32,8 +32,8 @@ func (t *Transformer) toTimeSeries(file File) {
 			v.Metadata[splitIndex[1]] = intValue
 		} else {
 			processedMap[splitIndex[0]] = TimeSeriesData{
-				FileId: file.ID,
-				Flat:   splitIndex[0],
+				FilePath: file.FilePath,
+				Flat:     splitIndex[0],
 				Metadata: map[string]int{
 					splitIndex[1]: intValue,
 				},
@@ -48,14 +48,18 @@ func (t *Transformer) toTimeSeries(file File) {
 			for _, value := range ts.Metadata {
 				total += value
 			}
-			ts.Metadata[MetadataTotalKey] = total
-			go t.DB.Write(RethinkDBTimeseriesTable, ts)
+			ts.TotalConsumption = int64(total)
+			go t.DB.Write(MongoDBTimeseriesTable, ts)
+		}
+
+		file.Stage = ReadyForArchive
+		file.Status = Success
+		updatedID := t.DB.UpdateById(MongoDBFileTable, file)
+		if updatedID != nil {
+			go t.PubSub.Publish(ReadyForArchive, file)
 		}
 	}()
 
-	file.Stage = ReadyForArchive
-	file.Status = Success
-	go t.DB.Update(RethinkDBFileTable, file)
 }
 
 // getTimestampFromFilename: extract time from filename and then convert it into time object

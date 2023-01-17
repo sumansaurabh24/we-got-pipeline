@@ -1,17 +1,15 @@
 package app
 
 const (
-	RethinkDBHost            = "localhost:%d"
-	RethinkDBPort            = 28015
-	RethinkDBName            = "we-got"
-	RethinkDBFileTable       = "file"
-	RethinkDBTimeseriesTable = "timeseries"
-	RethinkDBChangeNewValue  = "new_val"
-	ArchivedPath             = "/Users/suman.saurabh/Archived/%s"
-	ScheduleInterval         = 24
-	RegExpPattern            = "(A|B|C|D)[0-9]+(\\s)+_([A-Z][0-9]|[A-Z]+)"
-	FilenamePrefix           = "VENAQUA_"
-	MetadataTotalKey         = "total"
+	MongoDBHost            = "mongodb://localhost:%d/"
+	MongoDBPort            = 27017
+	MongoDBName            = "we-got"
+	MongoDBFileTable       = "file"
+	MongoDBTimeseriesTable = "timeseries"
+	ArchivedPath           = "/Users/suman.saurabh/Archived/%s"
+	ScheduleInterval       = 24
+	RegExpPattern          = "(A|B|C|D)[0-9]+(\\s)+_([A-Z][0-9]|[A-Z]+)"
+	FilenamePrefix         = "VENAQUA_"
 )
 
 var CsvFolderLocations = [...]string{"/Users/suman.saurabh/Project/data/a", "/Users/suman.saurabh/Project/data/b"}
@@ -19,13 +17,12 @@ var CsvFolderLocations = [...]string{"/Users/suman.saurabh/Project/data/a", "/Us
 const (
 	InProgress Status = "IN_PROGRESS"
 	Success    Status = "SUCCESS"
-	Failed     Status = "FAILED"
 	Archived   Status = "ARCHIVED"
 )
 
 const (
-	ReadyForRead      Stage = "ReadyForRead"
-	ReadyForTransform Stage = "ReadyForTransform"
-	ReadyForArchive   Stage = "ReadyForArchive"
-	Completed         Stage = "Completed"
+	ReadyForRead      Stage = "READY_FOR_READ"
+	ReadyForTransform Stage = "READY_FOR_TRANSFORM"
+	ReadyForArchive   Stage = "READY_FOR_ARCHIVE"
+	Completed         Stage = "COMPLETED"
 )

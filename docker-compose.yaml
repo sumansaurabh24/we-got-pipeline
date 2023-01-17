@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  mongo1:
+    image: mongo:5
+    container_name: mongo1
+    command: ["--replSet", "my-replica-set", "--bind_ip_all", "--port", "30001"]
+    volumes:
+      - ./data/mongo-1:/data/db
+    ports:
+      - 30001:30001
+    healthcheck:
+      test: test $$(echo "rs.initiate({_id:'my-replica-set',members:[{_id:0,host:\"mongo1:30001\"},{_id:1,host:\"mongo2:30002\"},{_id:2,host:\"mongo3:30003\"}]}).ok || rs.status().ok" | mongo --port 30001 --quiet) -eq 1
+      interval: 10s
+      start_period: 30s
+
+  mongo2:
+    image: mongo:5
+    container_name: mongo2
+    command: ["--replSet", "my-replica-set", "--bind_ip_all", "--port", "30002"]
+    volumes:
+      - ./data/mongo-2:/data/db
+    ports:
+      - 30002:30002
+
+  mongo3:
+    image: mongo:5
+    container_name: mongo3
+    command: ["--replSet", "my-replica-set", "--bind_ip_all", "--port", "30003"]
+    volumes:
+      - ./data/mongo-3:/data/db
+    ports:
+      - 30003:30003
+
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    restart: always
+    ports:
+      - "28081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo1
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: changeme
+      #ME_CONFIG_MONGODB_AUTH_DATABASE: admin
+      ME_CONFIG_MONGODB_ADMINUSERNAME:
+      ME_CONFIG_MONGODB_ADMINPASSWORD:
+      ME_CONFIG_MONGODB_URL: mongo://mongo1:30001/
+    depends_on:
+      - mongo1
