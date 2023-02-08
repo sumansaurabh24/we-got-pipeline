@@ -27,16 +27,14 @@ func (t *Transformer) toTimeSeries(file File) {
 		}
 		index = strings.ReplaceAll(index, " ", "")
 		splitIndex := strings.Split(index, "_")
-		intValue, _ := strconv.Atoi(value)
+		intValue, _ := strconv.Atoi(value.(string))
 		if v, found := processedMap[splitIndex[0]]; found {
 			v.Metadata[splitIndex[1]] = intValue
 		} else {
 			processedMap[splitIndex[0]] = TimeSeriesData{
-				FilePath: file.FilePath,
-				Flat:     splitIndex[0],
-				Metadata: map[string]int{
-					splitIndex[1]: intValue,
-				},
+				FilePath:  file.FilePath,
+				Flat:      splitIndex[0],
+				Metadata:  map[string]interface{}{splitIndex[1]: intValue},
 				Timestamp: timestamp,
 			}
 		}
@@ -46,15 +44,15 @@ func (t *Transformer) toTimeSeries(file File) {
 		for _, ts := range processedMap {
 			total := 0
 			for _, value := range ts.Metadata {
-				total += value
+				total += value.(int)
 			}
 			ts.TotalConsumption = int64(total)
-			go t.DB.Write(MongoDBTimeseriesTable, ts)
+			go t.TimeSeriesDataRepository.Write(ts)
 		}
 
 		file.Stage = ReadyForArchive
 		file.Status = Success
-		updatedID := t.DB.UpdateById(MongoDBFileTable, file)
+		updatedID := t.FileRepository.Update(file)
 		if updatedID != nil {
 			go t.PubSub.Publish(ReadyForArchive, file)
 		}

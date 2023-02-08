@@ -27,7 +27,7 @@ func (c *CSV) read(filepath string) [][]string {
 }
 
 // ReadLastEntryOfCsv : Read all csv content and extract last entry/tuple/row of the csv
-func (c *CSV) ReadLastEntryOfCsv(file File) map[string]string {
+func (c *CSV) ReadLastEntryOfCsv(file File) map[string]interface{} {
 	data := c.read(file.FilePath)
 	if data == nil {
 		c.Logger.Warnw("Data is nil after reading csv")
@@ -47,7 +47,7 @@ func (c *CSV) ReadLastEntryOfCsv(file File) map[string]string {
 	}
 
 	lastRowIndex := rowLength - 1
-	lastEntry := make(map[string]string)
+	lastEntry := make(map[string]interface{})
 	for i := 0; i < columnLength; i++ {
 		headerValue := data[0][i]
 		if len(headerValue) == 0 {

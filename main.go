@@ -1,10 +1,9 @@
 package main
 
 import (
-	"context"
 	"github.com/go-co-op/gocron"
 	"time"
-	"we-got-pipeline/app"
+	"we-got-pipeline/pkg/app"
 )
 
 func main() {
@@ -17,15 +16,21 @@ func main() {
 	if err != nil {
 		logger.Panic(err)
 	}
-	defer db.Client.Disconnect(context.TODO())
-
+	//db.AutoMigrate(&app.File{}, &app.TimeSeriesData{})
 	pubSub := app.InitializeNats(logger)
 	//###################### Initialization ###############################
 
 	p := app.Pipeline{
 		Logger: logger,
-		DB:     db,
 		PubSub: pubSub,
+		FileRepository: &app.DBClient[app.File]{
+			Logger: logger,
+			DB:     db,
+		},
+		TimeSeriesDataRepository: &app.DBClient[app.TimeSeriesData]{
+			Logger: logger,
+			DB:     db,
+		},
 	}
 	p.Invoke()
 

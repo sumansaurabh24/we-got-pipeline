@@ -7,33 +7,29 @@ import (
 	"github.com/nats-io/nats.go"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 // insertFileAndPublish : insert into database and publish to message queue
 func (p *Pipeline) insertFileAndPublish(file File) {
-	insertedID := p.DB.Write(MongoDBFileTable, file)
-	if insertedID != nil {
-		file.ID = insertedID
-		go p.PubSub.Publish(ReadyForRead, file)
+	fileInserted := p.FileRepository.Write(file)
+	if fileInserted != nil && fileInserted.ID != 0 {
+		go p.PubSub.Publish(ReadyForRead, fileInserted)
 	}
 }
 
 // PublishFiles : Publish the files into db periodically
 func (p *Pipeline) PublishFiles() {
 	p.Logger.Infow("Stage: PublishFiles")
-	timestamp := time.Now()
 	batchId := uuid.NewString()
 	for _, folder := range CsvFolderLocations {
 		err := filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
 			if !info.IsDir() {
 				file := File{
-					Timestamp: timestamp,
-					BatchId:   batchId,
-					Filename:  info.Name(),
-					Status:    InProgress,
-					Stage:     ReadyForRead,
-					FilePath:  path,
+					BatchId:  batchId,
+					Filename: info.Name(),
+					Status:   InProgress,
+					Stage:    ReadyForRead,
+					FilePath: path,
 				}
 				go p.insertFileAndPublish(file)
 			}
@@ -43,7 +39,6 @@ func (p *Pipeline) PublishFiles() {
 			p.Logger.Error(err)
 		}
 	}
-	p.Logger.Infow("Stage: PublishFiles Completed")
 }
 
 // readyForReadSubscriber : Subscribe the changes when the file is ready for read.
@@ -71,8 +66,8 @@ func (p *Pipeline) readyForReadSubscriber(msg *nats.Msg) {
 		p.Logger.Infow("Last entries map created for file", "id", file.ID)
 
 		go func() {
-			upsertedID := p.DB.UpdateById(MongoDBFileTable, file)
-			if upsertedID != nil {
+			fileUpdated := p.FileRepository.Update(file)
+			if fileUpdated.ID != 0 {
 				go p.PubSub.Publish(ReadyForTransform, file)
 			}
 		}()
@@ -94,9 +89,10 @@ func (p *Pipeline) readyForTransformSubscriber(msg *nats.Msg) {
 		}
 		p.Logger.Infow("readyForTransformSubscriber received message", "file", file)
 		transformer := Transformer{
-			Logger: p.Logger,
-			DB:     p.DB,
-			PubSub: p.PubSub,
+			Logger:                   p.Logger,
+			PubSub:                   p.PubSub,
+			TimeSeriesDataRepository: p.TimeSeriesDataRepository,
+			FileRepository:           p.FileRepository,
 		}
 		go transformer.toTimeSeries(file)
 	}()
@@ -116,13 +112,15 @@ func (p *Pipeline) readyForArchiveSubscriber(msg *nats.Msg) {
 			return
 		}
 		p.Logger.Infow("readyForArchiveSubscriber received message", "file", file)
-		if err := os.Rename(file.FilePath, fmt.Sprintf(ArchivedPath, file.Filename)); err != nil {
-			p.Logger.Errorw("Error while archiving the file", "error", err)
-			return
+		if EnableArchiving {
+			if err := os.Rename(file.FilePath, fmt.Sprintf(ArchivedPath, file.Filename)); err != nil {
+				p.Logger.Errorw("Error while archiving the file", "error", err)
+				return
+			}
 		}
 		file.Status = Archived
 		file.Stage = Completed
-		go p.DB.UpdateById(MongoDBFileTable, file)
+		go p.FileRepository.Update(file)
 	}()
 }
 
